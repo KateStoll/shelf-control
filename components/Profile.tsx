@@ -58,7 +58,7 @@ export default function ProfileComponent() {
       </label>
 
       <fieldset>
-        <legend>Favorite Moods</legend>
+        <legend data-testid="favorite-moods">Favorite Moods</legend>
         {moods.map(m => (
           <label key={m}>
             <input
