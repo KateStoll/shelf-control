@@ -1,17 +1,44 @@
 "use client";
 
-import { useState } from "react";
-import { books } from "../data/books";
+import { useEffect, useState } from "react";
+import { Book } from "../types/book";
+import { books as mockBooks } from "../data/books";
+import { Mood } from "../data/moods";
 import { filterBooksByMood } from "../utils/filterBooks";
 import { getRandomBook } from "../utils/randomBook";
+import { loadBooks, saveBooks } from "../utils/storage";
 
-export default function BookPicker() {
-  const [selectedMood, setSelectedMood] = useState("cozy");
-  const [pickedBook, setPickedBook] = useState<typeof books[0] | null>(null);
+export default function Page() {
+  // State
+  const [books, setBooks] = useState<Book[]>(() => {
+    const storedBooks = loadBooks();
+    return Array.isArray(storedBooks) && storedBooks.length > 0
+      ? storedBooks
+      : mockBooks;
+  });
 
+  const [selectedMood, setSelectedMood] = useState<Mood>("cozy");
+  const [pickedBook, setPickedBook] = useState<Book | null>(null);
+
+  // Save books to localStorage whenever they change
+  useEffect(() => {
+    saveBooks(books);
+  }, [books]);
+
+  // Pick a book based on the selected mood
   const handlePick = () => {
-    const filtered = filterBooksByMood(books, selectedMood as any);
-    setPickedBook(getRandomBook(filtered));
+    const filtered = filterBooksByMood(books, selectedMood);
+    const book = getRandomBook(filtered);
+
+    setPickedBook(book);
+
+    if (book) {
+      setBooks(prevBooks =>
+        prevBooks.map(b =>
+          b.id === book.id ? { ...b, status: "reading" } : b
+        )
+      );
+    }
   };
 
   return (
@@ -20,7 +47,10 @@ export default function BookPicker() {
 
       <label>
         Mood:
-        <select value={selectedMood} onChange={e => setSelectedMood(e.target.value)}>
+        <select
+          value={selectedMood}
+          onChange={e => setSelectedMood(e.target.value as Mood)}
+        >
           <option value="cozy">Cozy</option>
           <option value="winter">Winter</option>
           <option value="light">Light</option>
@@ -36,7 +66,8 @@ export default function BookPicker() {
         <div>
           <h2>{pickedBook.title}</h2>
           <p>{pickedBook.author}</p>
-          <p>{pickedBook.moods.join(", ")}</p>
+          <p>Moods: {pickedBook.moods.join(", ")}</p>
+          <p>Status: {pickedBook.status}</p>
         </div>
       )}
     </div>
