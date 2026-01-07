@@ -1,24 +1,46 @@
 "use client";
 
-import { useState } from "react";
-import { loadBooks, Book } from "../utils/books";
-import { loadProfile } from "@/utils/storage";
+import { useEffect, useState } from "react";
 import ProfileComponent from "../components/Profile";
+import { loadProfile } from "@/utils/storage";
+
+type Book = {
+  id: string;
+  title: string;
+  author: string;
+  format: string;
+  status: string;
+  moods: string[];
+};
 
 export default function Page() {
-  const [books] = useState<Book[]>(() => loadBooks());
+  const [books, setBooks] = useState<Book[]>([]);
   const [profile] = useState(() => loadProfile());
   const [selectedMood, setSelectedMood] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
 
-  // Filter books by mood if selected
+  useEffect(() => {
+    async function fetchBooks() {
+      const res = await fetch("/api/books");
+      const data = await res.json();
+      setBooks(data.books);
+      setLoading(false);
+    }
+
+    fetchBooks();
+  }, []);
+
   const filteredBooks = selectedMood
-    ? books.filter((book) => book.mood === selectedMood)
+    ? books.filter((book) => book.moods.includes(selectedMood))
     : books;
 
-  // Toggle mood selection
   const handleSelectMood = (mood: string) => {
     setSelectedMood((prev) => (prev === mood ? null : mood));
   };
+
+  if (loading) {
+    return <p className="p-6">Loading books…</p>;
+  }
 
   return (
     <main className="p-6">
@@ -41,7 +63,9 @@ export default function Page() {
             {filteredBooks.map((book) => (
               <li key={book.id} className="border p-2 rounded">
                 <strong>{book.title}</strong> by {book.author}{" "}
-                <span className="italic">({book.mood})</span>
+                <span className="italic">
+                  ({book.moods.join(", ")})
+                </span>
               </li>
             ))}
           </ul>
