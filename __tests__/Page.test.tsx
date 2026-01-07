@@ -1,83 +1,74 @@
-import { render, screen, fireEvent, waitFor } from "@testing-library/react";
+import { render, screen, fireEvent } from "@testing-library/react";
 import Page from "../app/page";
+import { Book } from "../utils/books";
 
-beforeEach(() => {
-  global.fetch = jest.fn(() =>
-    Promise.resolve({
-      json: () =>
-        Promise.resolve({
-          books: [
-            {
-              id: "1",
-              title: "A Wintery Tale",
-              author: "Author One",
-              format: "physical",
-              status: "unread",
-              moods: ["winter", "cozy"],
-            },
-            {
-              id: "2",
-              title: "Short & Sweet",
-              author: "Author Two",
-              format: "ebook",
-              status: "unread",
-              moods: ["short", "light"],
-            },
-            {
-              id: "3",
-              title: "Dark Nights",
-              author: "Author Three",
-              format: "audio",
-              status: "unread",
-              moods: ["dark", "cozy"],
-            },
-          ],
-        }),
-    } as any)
-  );
-});
+jest.mock("../utils/books", () => ({
+  loadBooks: jest.fn(() => [
+    { id: "1", title: "Cozy Mystery", author: "Author A", mood: "cozy" },
+    { id: "2", title: "Winter Tales", author: "Author B", mood: "winter" },
+    { id: "3", title: "Summer Fun", author: "Author C", mood: "summer" },
+  ]),
+}));
 
-afterEach(() => {
-  jest.resetAllMocks();
-});
+jest.mock("@/utils/storage", () => ({
+  loadProfile: jest.fn(() => ({
+    name: "Kat",
+    yearlyGoal: 20,
+    favoriteMoods: ["cozy", "winter"],
+  })),
+}));
 
-describe("Page component (API-driven)", () => {
-  test("renders books from the API", async () => {
+describe("Page component", () => {
+  test("renders profile and all books initially", () => {
     render(<Page />);
-
-    expect(await screen.findByText(/A Wintery Tale/i)).toBeInTheDocument();
-    expect(screen.getByText(/Short & Sweet/i)).toBeInTheDocument();
-    expect(screen.getByText(/Dark Nights/i)).toBeInTheDocument();
+    expect(screen.getByText(/Hey Kat/i)).toBeInTheDocument();
+    expect(screen.getByText(/Cozy Mystery/i)).toBeInTheDocument();
+    expect(screen.getByText(/Winter Tales/i)).toBeInTheDocument();
+    expect(screen.getByText(/Summer Fun/i)).toBeInTheDocument();
   });
 
-  test("filters books by selected mood", async () => {
+  test("filters books by selected mood", () => {
     render(<Page />);
 
-    await screen.findByText(/A Wintery Tale/i);
+    const cozyButton = screen.getByRole("button", { name: "cozy" });
+    fireEvent.click(cozyButton);
 
-    fireEvent.click(screen.getByRole("button", { name: "cozy" }));
-
-    expect(screen.getByText(/A Wintery Tale/i)).toBeInTheDocument();
-    expect(screen.getByText(/Dark Nights/i)).toBeInTheDocument();
-    expect(screen.queryByText(/Short & Sweet/i)).not.toBeInTheDocument();
+    expect(screen.getByText(/Cozy Mystery/i)).toBeInTheDocument();
+    expect(screen.queryByText(/Winter Tales/i)).not.toBeInTheDocument();
+    expect(screen.queryByText(/Summer Fun/i)).not.toBeInTheDocument();
 
     expect(screen.getByTestId("selected-mood")).toHaveTextContent("cozy");
   });
 
-  test("resets to all books when mood is toggled off", async () => {
+  test("resets to all books when same mood button clicked again", () => {
     render(<Page />);
 
-    await screen.findByText(/A Wintery Tale/i);
-
     const cozyButton = screen.getByRole("button", { name: "cozy" });
+    fireEvent.click(cozyButton); 
+    fireEvent.click(cozyButton); 
 
-    fireEvent.click(cozyButton);
-    fireEvent.click(cozyButton);
-
-    expect(screen.getByText(/A Wintery Tale/i)).toBeInTheDocument();
-    expect(screen.getByText(/Short & Sweet/i)).toBeInTheDocument();
-    expect(screen.getByText(/Dark Nights/i)).toBeInTheDocument();
+    expect(screen.getByText(/Cozy Mystery/i)).toBeInTheDocument();
+    expect(screen.getByText(/Winter Tales/i)).toBeInTheDocument();
+    expect(screen.getByText(/Summer Fun/i)).toBeInTheDocument();
 
     expect(screen.queryByTestId("selected-mood")).not.toBeInTheDocument();
+  });
+
+  test("selecting a different mood updates the list correctly", () => {
+    render(<Page />);
+
+    // Select "cozy" first
+    const cozyButton = screen.getByRole("button", { name: "cozy" });
+    fireEvent.click(cozyButton);
+
+    // Then select "winter"
+    const winterButton = screen.getByRole("button", { name: "winter" });
+    fireEvent.click(winterButton);
+
+    expect(screen.queryByText(/Cozy Mystery/i)).not.toBeInTheDocument();
+    expect(screen.getByText(/Winter Tales/i)).toBeInTheDocument();
+    expect(screen.queryByText(/Summer Fun/i)).not.toBeInTheDocument();
+
+    expect(screen.getByTestId("selected-mood")).toHaveTextContent("winter");
   });
 });
