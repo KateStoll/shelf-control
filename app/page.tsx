@@ -4,18 +4,17 @@ import { useState } from "react";
 import { loadBooks, Book } from "../utils/books";
 import { loadProfile } from "@/utils/storage";
 import ProfileComponent from "../components/Profile";
+import { loadProfile } from "@/utils/storage";
 
 export default function Page() {
   const [books] = useState<Book[]>(() => loadBooks());
   const [profile] = useState(() => loadProfile());
   const [selectedMood, setSelectedMood] = useState<string | null>(null);
 
-  // Filter books by mood if selected
   const filteredBooks = selectedMood
     ? books.filter((book) => book.mood === selectedMood)
     : books;
 
-  // Toggle mood selection
   const handleSelectMood = (mood: string) => {
     setSelectedMood((prev) => (prev === mood ? null : mood));
   };
