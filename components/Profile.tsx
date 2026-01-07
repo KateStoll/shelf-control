@@ -1,84 +1,49 @@
-
 "use client";
 
-import { useState, useEffect } from "react";
-import { Profile } from "../types/profile";
-import { Mood, moods } from "../data/moods";
-import { loadProfile, saveProfile } from "../utils/storage";
+import { useState } from "react";
+import { loadProfile } from "@/utils/storage";
 
-export default function ProfileComponent() {
-  const [profile, setProfile] = useState<Profile>(() => {
-    const stored = loadProfile();
-    return stored ?? {
-      displayName: "",
-      yearlyGoal: 12,
-      favoriteMoods: [],
-    };
-  });
+export type Profile = {
+  name: string;
+  yearlyGoal: number;
+  favoriteMoods: string[];
+};
 
+type ProfileProps = {
+  profile?: Profile | null;
+  onSelectMood?: (mood: string) => void;
+};
 
-  useEffect(() => {
-    saveProfile(profile);
-  }, [profile]);
+export default function ProfileComponent({
+  profile,
+  onSelectMood,
+}: ProfileProps) {
 
+  const [localProfile] = useState<Profile | null>(() => profile ?? loadProfile());
 
-  const handleNameChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setProfile(prev => ({ ...prev, displayName: e.target.value }));
-  };
-
-  const handleGoalChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setProfile(prev => ({ ...prev, yearlyGoal: Number(e.target.value) }));
-  };
-
-  const handleMoodToggle = (mood: Mood) => {
-    setProfile(prev => ({
-      ...prev,
-      favoriteMoods: prev.favoriteMoods.includes(mood)
-        ? prev.favoriteMoods.filter(m => m !== mood)
-        : [...prev.favoriteMoods, mood],
-    }));
-  };
+  if (!localProfile) return null;
 
   return (
-    <div>
-      <h2>Profile</h2>
-      <label>
-        Name:
-        <input value={profile.displayName} onChange={handleNameChange} />
-      </label>
+    <section className="mb-6">
+      <h2 className="text-xl font-semibold">Hey {localProfile.name} 👋</h2>
+      <p className="text-sm text-gray-600">2026 goal: {localProfile.yearlyGoal} books</p>
 
-      <label>
-        Yearly Goal:
-        <input
-          type="number"
-          value={profile.yearlyGoal}
-          min={1}
-          onChange={handleGoalChange}
-        />
-      </label>
-
-      <fieldset>
-        <legend data-testid="favorite-moods">Favorite Moods</legend>
-        {moods.map(m => (
-          <label key={m}>
-            <input
-              type="checkbox"
-              checked={profile.favoriteMoods.includes(m)}
-              onChange={() => handleMoodToggle(m)}
-            />
-            {m}
-          </label>
-        ))}
-      </fieldset>
-
-      <div>
-        <h3>Preview</h3>
-        <p>
-          Hello, {profile.displayName || "Reader"}! Your goal is{" "}
-          {profile.yearlyGoal} books this year.
-        </p>
-        <p>Favorite moods: {profile.favoriteMoods.join(", ") || "None"}</p>
-      </div>
-    </div>
+      {localProfile.favoriteMoods.length > 0 && (
+        <div className="mt-2">
+          <p className="text-sm mb-1">Favorite moods:</p>
+          <div className="flex gap-2 flex-wrap">
+            {localProfile.favoriteMoods.map((mood) => (
+              <button
+                key={mood}
+                className="px-2 py-1 bg-blue-200 rounded hover:bg-blue-300"
+                onClick={() => onSelectMood && onSelectMood(mood)}
+              >
+                {mood}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+    </section>
   );
 }
