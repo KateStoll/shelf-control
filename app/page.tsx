@@ -1,79 +1,52 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import { Book } from "../types/book";
-import { books as mockBooks } from "../data/books";
-import { Mood } from "../data/moods";
-import { filterBooksByMood } from "../utils/filterBooks";
-import { getRandomBook } from "../utils/randomBook";
-import { loadBooks, saveBooks } from "../utils/storage";
-
+import { useState } from "react";
+import { loadBooks, Book } from "../utils/books";
+import { loadProfile } from "@/utils/storage";
 import ProfileComponent from "../components/Profile";
 
 export default function Page() {
+  const [books] = useState<Book[]>(() => loadBooks());
+  const [profile] = useState(() => loadProfile());
+  const [selectedMood, setSelectedMood] = useState<string | null>(null);
 
-  const [books, setBooks] = useState<Book[]>(() => {
-    const storedBooks = loadBooks();
-    return Array.isArray(storedBooks) && storedBooks.length > 0
-      ? storedBooks
-      : mockBooks;
-  });
+  // Filter books by mood if selected
+  const filteredBooks = selectedMood
+    ? books.filter((book) => book.mood === selectedMood)
+    : books;
 
-  const [selectedMood, setSelectedMood] = useState<Mood>("cozy");
-  const [pickedBook, setPickedBook] = useState<Book | null>(null);
-
-  useEffect(() => {
-    saveBooks(books);
-  }, [books]);
-
-  const handlePick = () => {
-    const filtered = filterBooksByMood(books, selectedMood);
-    const book = getRandomBook(filtered);
-
-    setPickedBook(book);
-
-    if (book) {
-      setBooks(prevBooks =>
-        prevBooks.map(b =>
-          b.id === book.id ? { ...b, status: "reading" } : b
-        )
-      );
-    }
+  // Toggle mood selection
+  const handleSelectMood = (mood: string) => {
+    setSelectedMood((prev) => (prev === mood ? null : mood));
   };
 
   return (
-    <div style={{ padding: "1rem" }}>
-      <h1>Shelf Control — Pick a Book</h1>
+    <main className="p-6">
+      <ProfileComponent profile={profile} onSelectMood={handleSelectMood} />
 
-      <label>
-        Mood:
-        <select
-          value={selectedMood}
-          onChange={e => setSelectedMood(e.target.value as Mood)}
-        >
-          <option value="cozy">Cozy</option>
-          <option value="winter">Winter</option>
-          <option value="light">Light</option>
-          <option value="dark">Dark</option>
-          <option value="short">Short</option>
-          <option value="surprise">Surprise</option>
-        </select>
-      </label>
+      <section>
+        <h2 className="text-xl font-semibold mb-4">Your Books</h2>
 
-      <button onClick={handlePick}>Pick for Me</button>
+        {selectedMood && (
+          <p className="text-sm text-gray-600 mb-2">
+            Showing books for mood:{" "}
+            <strong data-testid="selected-mood">{selectedMood}</strong>
+          </p>
+        )}
 
-      {pickedBook && (
-        <div style={{ marginTop: "1rem" }}>
-          <h2>{pickedBook.title}</h2>
-          <p>{pickedBook.author}</p>
-          <p>Moods: {pickedBook.moods.join(", ")}</p>
-          <p>Status: {pickedBook.status}</p>
-        </div>
-      )}
-
-      <hr style={{ margin: "2rem 0" }} />
-
-      <ProfileComponent />
-    </div>
+        {filteredBooks.length === 0 ? (
+          <p>No books found.</p>
+        ) : (
+          <ul className="space-y-2">
+            {filteredBooks.map((book) => (
+              <li key={book.id} className="border p-2 rounded">
+                <strong>{book.title}</strong> by {book.author}{" "}
+                <span className="italic">({book.mood})</span>
+              </li>
+            ))}
+          </ul>
+        )}
+      </section>
+    </main>
   );
 }

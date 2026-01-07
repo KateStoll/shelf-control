@@ -1,51 +1,45 @@
 import { render, screen, fireEvent } from "@testing-library/react";
-import ProfileComponent from "../components/Profile";
-import * as storage from "../utils/storage";
+import ProfileComponent, { Profile } from "../components/Profile";
+import { loadProfile } from "@/utils/storage";
 
-// Mock localStorage functions
-jest.spyOn(storage, "loadProfile").mockReturnValue(null);
-jest.spyOn(storage, "saveProfile");
+jest.mock("@/utils/storage", () => ({
+  loadProfile: jest.fn(() => ({
+    name: "Kat",
+    yearlyGoal: 20,
+    favoriteMoods: ["cozy", "winter"],
+  })),
+}));
 
 describe("ProfileComponent", () => {
-  beforeEach(() => {
-    jest.clearAllMocks();
+  const profile: Profile = {
+    name: "Kat",
+    yearlyGoal: 20,
+    favoriteMoods: ["cozy", "winter"],
+  };
+
+  test("renders profile info correctly", () => {
+    render(<ProfileComponent profile={profile} />);
+    expect(screen.getByText(/Hey Kat/i)).toBeInTheDocument();
+    expect(screen.getByText(/2026 goal: 20 books/i)).toBeInTheDocument();
+    expect(screen.getByText(/cozy/i)).toBeInTheDocument();
+    expect(screen.getByText(/winter/i)).toBeInTheDocument();
   });
 
-  test("renders all inputs and labels", () => {
-    render(<ProfileComponent />);
-    
-    expect(screen.getByLabelText(/Name/i)).toBeInTheDocument();
-    expect(screen.getByLabelText(/Yearly Goal/i)).toBeInTheDocument();
-    expect(screen.getByTestId("favorite-moods")).toBeInTheDocument();  });
+  test("calls onSelectMood callback when a mood button is clicked", () => {
+    const mockSelect = jest.fn();
+    render(<ProfileComponent profile={profile} onSelectMood={mockSelect} />);
 
-  test("typing in name updates state and calls saveProfile", () => {
-    render(<ProfileComponent />);
-    
-    const nameInput = screen.getByLabelText(/Name/i) as HTMLInputElement;
-    fireEvent.change(nameInput, { target: { value: "Kat" } });
+    const cozyButton = screen.getByText("cozy");
+    fireEvent.click(cozyButton);
 
-    expect(nameInput).toHaveValue("Kat");
-    expect(storage.saveProfile).toHaveBeenCalled();
+    expect(mockSelect).toHaveBeenCalledWith("cozy");
   });
 
-  test("changing yearly goal updates state and calls saveProfile", () => {
-    render(<ProfileComponent />);
-    
-    const goalInput = screen.getByLabelText(/Yearly Goal/i) as HTMLInputElement;
-    fireEvent.change(goalInput, { target: { value: 20 } });
+  test("does not render anything if profile is null", () => {
 
-    expect(goalInput).toHaveValue(20);
-    expect(storage.saveProfile).toHaveBeenCalled();
-  });
+    (loadProfile as jest.Mock).mockReturnValueOnce(null);
 
-  test("toggling a mood checkbox updates state and calls saveProfile", () => {
-    render(<ProfileComponent />);
-    
-    const cozyCheckbox = screen.getByLabelText("cozy") as HTMLInputElement;
-    expect(cozyCheckbox.checked).toBe(false);
-
-    fireEvent.click(cozyCheckbox);
-    expect(cozyCheckbox.checked).toBe(true);
-    expect(storage.saveProfile).toHaveBeenCalled();
+    render(<ProfileComponent profile={null} />);
+    expect(screen.queryByText(/Hey/i)).not.toBeInTheDocument();
   });
 });
